@@ -1,0 +1,14 @@
+{
+  "name": "wgpu-experiments",
+  "version": "0.1.0",
+  "files": [
+    "wgpu_experiments_bg.wasm",
+    "wgpu_experiments.js",
+    "wgpu_experiments.d.ts"
+  ],
+  "module": "wgpu_experiments.js",
+  "types": "wgpu_experiments.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
