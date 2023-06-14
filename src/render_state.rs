@@ -152,6 +152,10 @@ impl RenderState {
 	}
 }
 
+// --------------------------
+// ---- Helper Functions ----
+// --------------------------
+
 fn make_instance() -> wgpu::Instance {
 	let backends = wgpu::util::backend_bits_from_env().unwrap_or(wgpu::Backends::all());
 	let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
