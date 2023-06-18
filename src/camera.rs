@@ -1,6 +1,6 @@
 use nalgebra::geometry::{IsometryMatrix3, Perspective3};
 use nalgebra::{
-	matrix, Matrix4, Point3, Rotation3, Translation3, UnitQuaternion, Vector3,
+	matrix, Matrix4, Point3, Translation3, UnitQuaternion, Vector3,
 };
 use winit::event::VirtualKeyCode;
 use winit_input_helper::WinitInputHelper;

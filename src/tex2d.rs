@@ -66,7 +66,7 @@ impl Tex2d {
 			depth_or_array_layers: 1,
 		};
 		let texture = device.create_texture_with_data(
-			&queue,
+			queue,
 			&wgpu::TextureDescriptor {
 				label,
 				size: tex_size,
@@ -78,7 +78,7 @@ impl Tex2d {
 					| wgpu::TextureUsages::COPY_DST,
 				view_formats: &[],
 			},
-			&bytes,
+			bytes,
 		);
 		let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
 		// NOTE: The tutorial does this one manually instead of default.

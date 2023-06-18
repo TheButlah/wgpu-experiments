@@ -1,11 +1,11 @@
 use color_eyre::{eyre::bail, eyre::eyre, eyre::WrapErr, Help, Result};
 use instant::Instant;
 use log::{debug, warn};
-use nalgebra::geometry::{IsometryMatrix3, Point3};
-use nalgebra::{point, vector, Vector3};
+use nalgebra::geometry::Point3;
+use nalgebra::point;
 use std::fmt::Write;
 use wgpu::util::DeviceExt;
-use winit::dpi::{LogicalPosition, PhysicalPosition, PhysicalSize};
+use winit::dpi::{PhysicalPosition, PhysicalSize};
 use winit::window::{CursorGrabMode, Window};
 use winit_input_helper::WinitInputHelper;
 
@@ -280,7 +280,6 @@ fn make_camera(
 		const ZFAR: f32 = 100.0;
 		const EYE: Point3<f32> = point![0., 0., 1.];
 		const ORIGIN: Point3<f32> = point![0., 0., 0.];
-		const UP: Vector3<f32> = vector![0., 1., 0.];
 		Camera {
 			pos: EYE,
 			dir: ORIGIN - EYE,
@@ -460,6 +459,7 @@ fn make_vertex_data(device: &wgpu::Device) -> VertexData {
 	}
 }
 
+#[allow(clippy::too_many_arguments)]
 fn encode_render_commands(
 	encoder: &mut wgpu::CommandEncoder,
 	view: &wgpu::TextureView,
