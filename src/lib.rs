@@ -7,7 +7,8 @@ use cfg_if::cfg_if;
 use color_eyre::{eyre::WrapErr, Result};
 use log::error;
 use log::{info, warn};
-use winit::event::VirtualKeyCode;
+use winit::dpi::{PhysicalPosition};
+use winit::event::{VirtualKeyCode};
 use winit::event_loop::ControlFlow;
 use winit::event_loop::EventLoop;
 use winit::window::WindowBuilder;
@@ -64,6 +65,16 @@ pub async fn run() -> Result<()> {
 			.expect("Couldn't append canvas to document body.");
 	}
 
+	window
+		.set_cursor_grab(winit::window::CursorGrabMode::Locked)
+		.unwrap();
+	window
+		.set_cursor_position(PhysicalPosition::new(
+			window.inner_size().width / 2,
+			window.inner_size().height / 2,
+		))
+		.unwrap();
+
 	let mut input = WinitInputHelper::new();
 	let mut state = RenderState::new(window)
 		.await
@@ -71,6 +82,13 @@ pub async fn run() -> Result<()> {
 
 	info!("Starting event loop");
 	event_loop.run(move |event, _e_loop, control_flow| {
+		// if let Event::DeviceEvent {
+		// 	event: DeviceEvent::MouseMotion { delta: (dx, dy) },
+		// 	..
+		// } = event
+		// {
+		// 	log::info!("motion: ({}, {})", dx, dy);
+		// }
 		// When true, input_helper is done processing events.
 		if !input.update(&event) {
 			return;
