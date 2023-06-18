@@ -5,8 +5,8 @@ use nalgebra::geometry::{IsometryMatrix3, Point3};
 use nalgebra::{point, vector, Vector3};
 use std::fmt::Write;
 use wgpu::util::DeviceExt;
-use winit::dpi::PhysicalSize;
-use winit::window::Window;
+use winit::dpi::{LogicalPosition, PhysicalPosition, PhysicalSize};
+use winit::window::{CursorGrabMode, Window};
 use winit_input_helper::WinitInputHelper;
 
 use crate::camera::Camera;
@@ -33,6 +33,7 @@ pub struct RenderState {
 	last_render: Instant,
 	last_title: Instant,
 	title: String,
+	center: PhysicalPosition<u32>,
 }
 impl RenderState {
 	pub async fn new(window: Window) -> Result<Self> {
@@ -57,6 +58,13 @@ impl RenderState {
 			&config,
 		);
 
+		let center = {
+			let size = window.inner_size();
+			PhysicalPosition::new(size.width / 2, size.height / 2)
+		};
+
+		lock_cursor(&window, center);
+
 		Ok(Self {
 			surface,
 			window,
@@ -75,10 +83,20 @@ impl RenderState {
 			last_render: Instant::now(),
 			last_title: Instant::now(),
 			title: String::new(),
+			center,
 		})
 	}
 
 	pub fn update(&mut self, input: &WinitInputHelper) {
+		let (dx, dy) = input.mouse_diff();
+		if dx != 0. && dy != 0. {
+			log::info!("mouse diff: ({}, {})", dx, dy);
+		}
+		if input.mouse_pressed(0) {
+			lock_cursor(&self.window, self.center);
+		} else if input.mouse().is_none() {
+			unlock_cursor(&self.window);
+		}
 		self.camera.update(input);
 		self.queue.write_buffer(
 			&self.camera_buf,
@@ -264,7 +282,8 @@ fn make_camera(
 		const ORIGIN: Point3<f32> = point![0., 0., 0.];
 		const UP: Vector3<f32> = vector![0., 1., 0.];
 		Camera {
-			view: IsometryMatrix3::look_at_rh(&EYE, &ORIGIN, &UP),
+			pos: EYE,
+			dir: ORIGIN - EYE,
 			proj: nalgebra::geometry::Perspective3::new(
 				config.width as f32 / config.height as f32,
 				FOVY,
@@ -478,4 +497,15 @@ fn encode_render_commands(
 	render_pass.set_bind_group(1, camera_bind_group, &[]);
 	// render_pass.draw(0..self.num_vertices, 0..1)
 	render_pass.draw_indexed(0..num_indices, 0, 0..1)
+}
+
+fn lock_cursor(window: &Window, center: PhysicalPosition<u32>) {
+	window.set_cursor_position(center).unwrap();
+	window.set_cursor_grab(CursorGrabMode::Locked).unwrap();
+	window.set_cursor_visible(false);
+}
+
+fn unlock_cursor(window: &Window) {
+	window.set_cursor_visible(true);
+	window.set_cursor_grab(CursorGrabMode::None).unwrap();
 }
