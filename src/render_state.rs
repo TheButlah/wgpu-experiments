@@ -6,7 +6,6 @@ use nalgebra::point;
 use std::fmt::Write;
 use wgpu::util::DeviceExt;
 use winit::dpi::PhysicalSize;
-use winit::error::ExternalError;
 use winit::window::{CursorGrabMode, Window};
 use winit_input_helper::WinitInputHelper;
 

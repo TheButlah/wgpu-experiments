@@ -7,7 +7,6 @@ use cfg_if::cfg_if;
 use color_eyre::{eyre::WrapErr, Result};
 use log::error;
 use log::{info, warn};
-use winit::dpi::PhysicalPosition;
 use winit::event::VirtualKeyCode;
 use winit::event_loop::ControlFlow;
 use winit::event_loop::EventLoop;
