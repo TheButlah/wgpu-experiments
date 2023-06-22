@@ -6,6 +6,7 @@ use nalgebra::point;
 use std::fmt::Write;
 use wgpu::util::DeviceExt;
 use winit::dpi::PhysicalSize;
+use winit::error::ExternalError;
 use winit::window::{CursorGrabMode, Window};
 use winit_input_helper::WinitInputHelper;
 
@@ -493,11 +494,11 @@ fn encode_render_commands(
 }
 
 fn lock_cursor(window: &Window) {
+	window.set_cursor_visible(false);
 	window
 		.set_cursor_grab(CursorGrabMode::Locked)
 		.or_else(|_| window.set_cursor_grab(CursorGrabMode::Confined))
 		.unwrap();
-	window.set_cursor_visible(false);
 }
 
 fn unlock_cursor(window: &Window) {

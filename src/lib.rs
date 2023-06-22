@@ -65,16 +65,6 @@ pub async fn run() -> Result<()> {
 			.expect("Couldn't append canvas to document body.");
 	}
 
-	window
-		.set_cursor_grab(winit::window::CursorGrabMode::Locked)
-		.unwrap();
-	window
-		.set_cursor_position(PhysicalPosition::new(
-			window.inner_size().width / 2,
-			window.inner_size().height / 2,
-		))
-		.unwrap();
-
 	let mut input = WinitInputHelper::new();
 	let mut state = RenderState::new(window)
 		.await
@@ -82,13 +72,6 @@ pub async fn run() -> Result<()> {
 
 	info!("Starting event loop");
 	event_loop.run(move |event, _e_loop, control_flow| {
-		// if let Event::DeviceEvent {
-		// 	event: DeviceEvent::MouseMotion { delta: (dx, dy) },
-		// 	..
-		// } = event
-		// {
-		// 	log::info!("motion: ({}, {})", dx, dy);
-		// }
 		// When true, input_helper is done processing events.
 		if !input.update(&event) {
 			return;
