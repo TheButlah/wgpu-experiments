@@ -5,7 +5,7 @@ use nalgebra::geometry::Point3;
 use nalgebra::point;
 use std::fmt::Write;
 use wgpu::util::DeviceExt;
-use winit::dpi::{PhysicalPosition, PhysicalSize};
+use winit::dpi::PhysicalSize;
 use winit::window::{CursorGrabMode, Window};
 use winit_input_helper::WinitInputHelper;
 
@@ -33,7 +33,6 @@ pub struct RenderState {
 	last_render: Instant,
 	last_title: Instant,
 	title: String,
-	center: PhysicalPosition<u32>,
 }
 impl RenderState {
 	pub async fn new(window: Window) -> Result<Self> {
@@ -58,12 +57,7 @@ impl RenderState {
 			&config,
 		);
 
-		let center = {
-			let size = window.inner_size();
-			PhysicalPosition::new(size.width / 2, size.height / 2)
-		};
-
-		lock_cursor(&window, center);
+		lock_cursor(&window);
 
 		Ok(Self {
 			surface,
@@ -83,7 +77,6 @@ impl RenderState {
 			last_render: Instant::now(),
 			last_title: Instant::now(),
 			title: String::new(),
-			center,
 		})
 	}
 
@@ -93,7 +86,7 @@ impl RenderState {
 			log::info!("mouse diff: ({}, {})", dx, dy);
 		}
 		if input.mouse_pressed(0) {
-			lock_cursor(&self.window, self.center);
+			lock_cursor(&self.window);
 		} else if input.cursor().is_none() {
 			unlock_cursor(&self.window);
 		}
@@ -499,10 +492,12 @@ fn encode_render_commands(
 	render_pass.draw_indexed(0..num_indices, 0, 0..1)
 }
 
-fn lock_cursor(window: &Window, center: PhysicalPosition<u32>) {
-	window.set_cursor_position(center).unwrap();
-	window.set_cursor_grab(CursorGrabMode::Locked).unwrap();
+fn lock_cursor(window: &Window) {
 	window.set_cursor_visible(false);
+	window
+		.set_cursor_grab(CursorGrabMode::Locked)
+		.or_else(|_| window.set_cursor_grab(CursorGrabMode::Confined))
+		.unwrap();
 }
 
 fn unlock_cursor(window: &Window) {
