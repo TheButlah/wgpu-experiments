@@ -94,7 +94,7 @@ impl RenderState {
 		}
 		if input.mouse_pressed(0) {
 			lock_cursor(&self.window, self.center);
-		} else if input.mouse().is_none() {
+		} else if input.cursor().is_none() {
 			unlock_cursor(&self.window);
 		}
 		self.camera.update(input);
