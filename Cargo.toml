@@ -23,6 +23,8 @@ web-sys = "0.3"
 wgpu = "0.16"
 winit = "0.28"
 winit_input_helper = { git = "https://github.com/thebutlah/winit_input_helper", rev = "d095808" }
+egui-wgpu = "0.22"
+egui = "0.22"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 console_error_panic_hook = "0.1"

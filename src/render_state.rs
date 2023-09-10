@@ -33,7 +33,11 @@ pub struct RenderState {
 	last_render: Instant,
 	last_title: Instant,
 	title: String,
+	egui_renderer: egui_wgpu::renderer::Renderer,
+	egui_texture: egui::TextureId,
+	egui_ctx: egui::Context,
 }
+
 impl RenderState {
 	pub async fn new(window: Window) -> Result<Self> {
 		let size = window.inner_size();
@@ -57,6 +61,15 @@ impl RenderState {
 			&config,
 		);
 
+		let mut egui_renderer =
+			egui_wgpu::renderer::Renderer::new(&device, config.format, None, 1);
+		let egui_texture = egui_renderer.register_native_texture(
+			&device,
+			&diffuse_data.tex.view,
+			wgpu::FilterMode::Linear,
+		);
+		let egui_ctx = egui::Context::default();
+
 		lock_cursor(&window);
 
 		Ok(Self {
@@ -77,14 +90,20 @@ impl RenderState {
 			last_render: Instant::now(),
 			last_title: Instant::now(),
 			title: String::new(),
+			egui_renderer,
+			egui_texture,
+			egui_ctx,
+		})
+	}
+
+	fn draw_egui(&self) -> egui::FullOutput {
+		self.egui_ctx.run(egui::RawInput::default(), |ctx| {
+			egui::Window::new("my window").show(ctx, |ui| ui.label("foobar"));
 		})
 	}
 
 	pub fn update(&mut self, input: &WinitInputHelper) {
 		let (dx, dy) = input.mouse_diff();
-		if dx != 0. && dy != 0. {
-			log::info!("mouse diff: ({}, {})", dx, dy);
-		}
 		if input.mouse_pressed(0) {
 			lock_cursor(&self.window);
 		} else if input.cursor().is_none() {
@@ -105,15 +124,58 @@ impl RenderState {
 		let view = output
 			.texture
 			.create_view(&wgpu::TextureViewDescriptor::default());
+		let screen_descriptor = egui_wgpu::renderer::ScreenDescriptor {
+			pixels_per_point: 1.0,
+			size_in_pixels: [output.texture.width(), output.texture.height()],
+		};
 
 		let mut encoder =
 			self.device
 				.create_command_encoder(&wgpu::CommandEncoderDescriptor {
 					label: Some("Render Encoder"),
 				});
-		encode_render_commands(
+
+		let egui_primitives = {
+			let egui_output = self.draw_egui();
+			for (tid, delta) in egui_output.textures_delta.set {
+				// assert_eq!(tid, self.egui_texture); // I have no idea what other textures
+				self.egui_renderer.update_texture(
+					&self.device,
+					&self.queue,
+					tid,
+					&delta,
+				);
+			}
+			self.egui_ctx.tessellate(egui_output.shapes)
+		};
+		self.egui_renderer.update_buffers(
+			&self.device,
+			&self.queue,
 			&mut encoder,
-			&view,
+			&egui_primitives,
+			&screen_descriptor,
+		);
+
+		let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+			label: Some("Render Pass"),
+			color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+				view: &view,
+				resolve_target: None,
+				ops: wgpu::Operations {
+					load: wgpu::LoadOp::Clear(wgpu::Color {
+						r: 0.1,
+						g: 0.2,
+						b: 0.3,
+						a: 1.0,
+					}),
+					store: true,
+				},
+			})],
+			depth_stencil_attachment: None,
+		});
+
+		draw(
+			&mut render_pass,
 			&self.pipeline,
 			&self.vtx_buf,
 			&self.idx_buf,
@@ -121,6 +183,13 @@ impl RenderState {
 			&self.camera_bind_group,
 			self.num_indices,
 		);
+		self.egui_renderer.render(
+			&mut render_pass,
+			&egui_primitives,
+			&screen_descriptor,
+		);
+
+		drop(render_pass);
 		let commands = encoder.finish();
 
 		self.queue.submit([commands]);
@@ -386,6 +455,7 @@ fn make_pipeline(
 struct DiffuseData {
 	bind_group_layout: wgpu::BindGroupLayout,
 	bind_group: wgpu::BindGroup,
+	tex: Tex2d,
 }
 fn make_diffuse_texture(device: &wgpu::Device, queue: &wgpu::Queue) -> DiffuseData {
 	let tex = Tex2d::new_from_img_bytes(
@@ -412,6 +482,7 @@ fn make_diffuse_texture(device: &wgpu::Device, queue: &wgpu::Queue) -> DiffuseDa
 	DiffuseData {
 		bind_group_layout,
 		bind_group,
+		tex,
 	}
 }
 
@@ -452,35 +523,15 @@ fn make_vertex_data(device: &wgpu::Device) -> VertexData {
 	}
 }
 
-#[allow(clippy::too_many_arguments)]
-fn encode_render_commands(
-	encoder: &mut wgpu::CommandEncoder,
-	view: &wgpu::TextureView,
-	pipeline: &wgpu::RenderPipeline,
-	vtx_buf: &wgpu::Buffer,
-	idx_buf: &wgpu::Buffer,
-	diffuse_bind_group: &wgpu::BindGroup,
-	camera_bind_group: &wgpu::BindGroup,
+fn draw<'a, 'b: 'a>(
+	render_pass: &mut wgpu::RenderPass<'a>,
+	pipeline: &'b wgpu::RenderPipeline,
+	vtx_buf: &'b wgpu::Buffer,
+	idx_buf: &'b wgpu::Buffer,
+	diffuse_bind_group: &'b wgpu::BindGroup,
+	camera_bind_group: &'b wgpu::BindGroup,
 	num_indices: u32,
 ) {
-	let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-		label: Some("Render Pass"),
-		color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-			view,
-			resolve_target: None,
-			ops: wgpu::Operations {
-				load: wgpu::LoadOp::Clear(wgpu::Color {
-					r: 0.1,
-					g: 0.2,
-					b: 0.3,
-					a: 1.0,
-				}),
-				store: true,
-			},
-		})],
-		depth_stencil_attachment: None,
-	});
-
 	render_pass.set_pipeline(pipeline);
 
 	render_pass.set_vertex_buffer(0, vtx_buf.slice(..));
@@ -489,7 +540,7 @@ fn encode_render_commands(
 	render_pass.set_bind_group(0, diffuse_bind_group, &[]);
 	render_pass.set_bind_group(1, camera_bind_group, &[]);
 	// render_pass.draw(0..self.num_vertices, 0..1)
-	render_pass.draw_indexed(0..num_indices, 0, 0..1)
+	render_pass.draw_indexed(0..num_indices, 0, 0..1);
 }
 
 fn lock_cursor(window: &Window) {
