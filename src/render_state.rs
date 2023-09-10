@@ -34,7 +34,7 @@ pub struct RenderState {
 	last_title: Instant,
 	title: String,
 	egui_renderer: egui_wgpu::renderer::Renderer,
-	egui_texture: egui::TextureId,
+	egui_output_texture: Tex2d,
 	egui_ctx: egui::Context,
 }
 
@@ -61,11 +61,16 @@ impl RenderState {
 			&config,
 		);
 
-		let mut egui_renderer =
-			egui_wgpu::renderer::Renderer::new(&device, config.format, None, 1);
-		let egui_texture = egui_renderer.register_native_texture(
+		let egui_output_texture = diffuse_data.tex;
+		let mut egui_renderer = egui_wgpu::renderer::Renderer::new(
 			&device,
-			&diffuse_data.tex.view,
+			egui_output_texture.texture.format(),
+			None,
+			1,
+		);
+		egui_renderer.register_native_texture(
+			&device,
+			&egui_output_texture.view,
 			wgpu::FilterMode::Linear,
 		);
 		let egui_ctx = egui::Context::default();
@@ -91,7 +96,7 @@ impl RenderState {
 			last_title: Instant::now(),
 			title: String::new(),
 			egui_renderer,
-			egui_texture,
+			egui_output_texture,
 			egui_ctx,
 		})
 	}
@@ -124,10 +129,6 @@ impl RenderState {
 		let view = output
 			.texture
 			.create_view(&wgpu::TextureViewDescriptor::default());
-		let screen_descriptor = egui_wgpu::renderer::ScreenDescriptor {
-			pixels_per_point: 1.0,
-			size_in_pixels: [output.texture.width(), output.texture.height()],
-		};
 
 		let mut encoder =
 			self.device
@@ -147,6 +148,13 @@ impl RenderState {
 				);
 			}
 			self.egui_ctx.tessellate(egui_output.shapes)
+		};
+		let screen_descriptor = egui_wgpu::renderer::ScreenDescriptor {
+			pixels_per_point: 1.0,
+			size_in_pixels: [
+				self.egui_output_texture.texture.width(),
+				self.egui_output_texture.texture.height(),
+			],
 		};
 		self.egui_renderer.update_buffers(
 			&self.device,
@@ -183,15 +191,34 @@ impl RenderState {
 			&self.camera_bind_group,
 			self.num_indices,
 		);
+		drop(render_pass);
+
+		let mut egui_render_pass =
+			encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+				label: Some("Render Pass"),
+				color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+					view: &self.egui_output_texture.view,
+					resolve_target: None,
+					ops: wgpu::Operations {
+						load: wgpu::LoadOp::Clear(wgpu::Color {
+							r: 0.1,
+							g: 0.2,
+							b: 0.3,
+							a: 1.0,
+						}),
+						store: true,
+					},
+				})],
+				depth_stencil_attachment: None,
+			});
 		self.egui_renderer.render(
-			&mut render_pass,
+			&mut egui_render_pass,
 			&egui_primitives,
 			&screen_descriptor,
 		);
+		drop(egui_render_pass);
 
-		drop(render_pass);
 		let commands = encoder.finish();
-
 		self.queue.submit([commands]);
 		output.present();
 

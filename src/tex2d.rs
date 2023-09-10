@@ -75,7 +75,9 @@ impl Tex2d {
 				dimension: Self::VIEW_DIM.compatible_texture_dimension(),
 				format: wgpu::TextureFormat::Rgba8UnormSrgb,
 				usage: wgpu::TextureUsages::TEXTURE_BINDING
-					| wgpu::TextureUsages::COPY_DST,
+					| wgpu::TextureUsages::COPY_DST
+                    // this one is for egui
+                    | wgpu::TextureUsages::RENDER_ATTACHMENT,
 				view_formats: &[],
 			},
 			bytes,
