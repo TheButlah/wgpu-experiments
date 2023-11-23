@@ -172,6 +172,8 @@ fn make_instance() -> wgpu::Instance {
 	let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
 		backends,
 		dx12_shader_compiler: Default::default(),
+		flags: Default::default(),
+		gles_minor_version: Default::default(),
 	});
 
 	debug!(
@@ -475,10 +477,12 @@ fn encode_render_commands(
 					b: 0.3,
 					a: 1.0,
 				}),
-				store: true,
+				store: wgpu::StoreOp::Store,
 			},
 		})],
 		depth_stencil_attachment: None,
+		timestamp_writes: None,
+		occlusion_query_set: None,
 	});
 
 	render_pass.set_pipeline(pipeline);

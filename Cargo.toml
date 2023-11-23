@@ -20,14 +20,14 @@ nalgebra = { version = "0.32.2", features = ["convert-bytemuck"] }
 pollster = "0.3.0"
 rand = "0.8.5"
 web-sys = "0.3"
-wgpu = "0.16"
+wgpu = "0.18"
 winit = "0.28"
 winit_input_helper = { git = "https://github.com/thebutlah/winit_input_helper", rev = "d095808" }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 console_error_panic_hook = "0.1"
 console_log = "1"
-wgpu = { version = "0.16", features = ["webgl"]}
+wgpu = { version = "0.18", features = ["webgl"]}
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
 web-sys = { version = "0.3", features = [
